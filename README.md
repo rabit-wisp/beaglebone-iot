@@ -1,2 +1,15 @@
 # beaglebone-iot
-IoT beaglebone services running at device boxes in the field
+
+IoT beaglebone services running at device boxes in the field.
+
+
+## Physical layout
+
+TBD
+
+## Software
+
+TBD
+
+## Functions
+
