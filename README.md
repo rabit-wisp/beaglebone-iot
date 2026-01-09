@@ -36,6 +36,7 @@ The wires are:
 | P8_14     | P8     | 14    | green  | 220VAC sensor     |
 | P8_16     | P8     | 16    | blue   | Blue LED          |
 
+<img src="images/beaglebone-sketch.jpg" width="512"/>
 
 ## System Software
 
