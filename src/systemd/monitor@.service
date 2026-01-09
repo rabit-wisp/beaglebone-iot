@@ -1,0 +1,12 @@
+[Unit]
+Description=Ping Monitor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/monitor.sh --instance %i
+Restart=always
+User=myuser
+
+[Install]
+WantedBy=multi-user.target
