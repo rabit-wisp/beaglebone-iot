@@ -21,14 +21,14 @@ cleanup() {
 trap cleanup EXIT
 
 mkfifo $FIFO
-state=0 # this is a flag: door, gateway, internet
+state=0
 
 ping_monitor () {
     # checks for a host icmp repsonse,
     host=$1        # @host address to ping
     index=$2
     period=${3:-1} # @pariod (defaults to 1)
-    result=$(true)
+    result="INVALID"
     flag=$((1 << $index))
 
     (
@@ -39,13 +39,7 @@ ping_monitor () {
         if [[ $result != $last_seen ]] then
            last_seen=$result
 
-           if [[ $result ]] then
-              state=$(($state | ($state | $flag))) # set the flag
-           else
-               state=$(($state & ($state & ~$flag))) # clear the flag
-           fi
-
-           echo "$flag $result" >"$FIFO"
+           echo "$flag $((1 - $result))" | flock "$FIFO_DIR/lock" tee -a "$FIFO" >/dev/null
         fi;
         sleep $period
     done
@@ -64,22 +58,14 @@ door_monitor () {
         sleep 0.3 # wait a bit to debounce switch
 
         result=$(gpioget --numeric $GPIO_DOOR)
-        last_seen=$(true)
 
         if [[ $result != $last_seen ]] then
            last_seen=$result
 
-           if [[ $result ]] then
-              state=$(($state & ($state | $flag))) # set the flag
-              else
-                  state=$(($state & ($state & ~$flag))) # clear the flag
-           fi
+           echo "$flag $(( 1 - $result))" | flock "$FIFO_DIR/lock" tee -a "$FIFO" >/dev/null
+        fi
 
-
-              echo "$flag $result" >"$FIFO"
-           fi
-
-              sleep 1
+        sleep 1
     done
     ) &
     MONITOR_PIDS+=($!)
@@ -100,14 +86,7 @@ ups_monitor () {
 
         if [[ $result != $last_seen ]] then
            last_seen=$result
-
-           if [[ $result ]] then
-              state=$(($state & ($state | $flag))) # set the flag
-              else
-                  state=$(($state & ($state & ~$flag))) # clear the flag
-           fi
-
-           echo "$flag $result" >"$FIFO"
+           echo "$flag $result" | flock "$FIFO_DIR/lock" tee -a "$FIFO" >/dev/null
         fi
         sleep 1
     done
