@@ -31,10 +31,7 @@ ping_monitor () {
     result=$(true)
     flag=$((1 << $index))
 
-    #printf "starting monitor for %s (flag 0x%0x)\n" $host $flag
-
-    MONITOR_PIDS+=($$)
-
+    (
     while true; do
 
         ping -c1 -W1 "$host" >/dev/null 2>&1
@@ -52,13 +49,15 @@ ping_monitor () {
         fi;
         sleep $period
     done
+    ) &
+    MONITOR_PIDS+=($!)
 }
 
 door_monitor () {
 
-    MONITOR_PIDS+=($$)
     flag=1
 
+    (
     while true
     do
         gpiomon -n 1 $GPIO_DOOR >/dev/null
@@ -82,13 +81,15 @@ door_monitor () {
 
               sleep 1
     done
+    ) &
+    MONITOR_PIDS+=($!)
 }
 
 ups_monitor () {
 
-    MONITOR_PIDS+=($$)
     flag=1
 
+    (
     while true
     do
         gpiomon -n 1 $GPIO_UPS >/dev/null
@@ -110,16 +111,20 @@ ups_monitor () {
         fi
         sleep 1
     done
+    ) &
+
+    MONITOR_PIDS+=($!)
 }
 
 
-door_monitor 0 &
-ups_monitor 1 &
+door_monitor 0
+ups_monitor 1
 
-ping_monitor $LOCAL_GATEWAY 2 &
-ping_monitor $REMOTE_GATEWAY 3 &
-ping_monitor $LOCAL_MODEM 4 &
-ping_monitor $INTERNET 5 &
+ping_monitor $LOCAL_GATEWAY 2
+ping_monitor $REMOTE_GATEWAY 3
+ping_monitor $LOCAL_MODEM 4
+ping_monitor $INTERNET 5
+
 
 LED_PIDS=()
 
