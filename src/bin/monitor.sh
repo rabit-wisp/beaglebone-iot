@@ -9,7 +9,7 @@ MONITOR_PIDS=()
 LED_PIDS=()
 
 cleanup() {
-    echo cleaning up child processes and exiting
+    echo "cleaning up child processes and exiting ${MONITOR_PIDS}"
     for pid in ${LED_PIDS[@]} ${MONITOR_PIDS[@]}; do
         kill -9 $pid &>/dev/null || true
         wait $pid 2>/dev/null || true
@@ -49,7 +49,9 @@ ping_monitor () {
 
 door_monitor () {
 
-    flag=1
+    index=${1:-0}
+    flag=$((1 << $index))
+    last_seen=$(true)
 
     (
     while true
@@ -73,7 +75,8 @@ door_monitor () {
 
 ups_monitor () {
 
-    flag=1
+    index=${1:-1}
+    flag=$((1 << $index))
 
     (
     while true
@@ -132,11 +135,17 @@ declare -A blinking_pattern
 blinking_pattern["door-open"]="1000ms,1000ms"
 blinking_pattern["ups-power"]="200ms,200ms"
 
-blinking_pattern["ok"]="50ms,2000ms"
-blinking_pattern["Local Gateway"]="20ms,,50ms,20ms,2000ms"
-blinking_pattern["Remote Gateway"]="20ms,50ms,20ms,50ms,20ms,2000ms"
-blinking_pattern["Local Modem"]="20ms,50ms,200ms,50ms,20ms,2000ms"
-blinking_pattern["Internet"]="200ms,50ms,200ms,50ms,200ms,2000ms"
+# patterns are taken from morse code for numeric values 1, 2, 3, 4, ...
+DOT=60ms
+DASH=350ms
+M=100ms
+BREAK=3000ms
+
+blinking_pattern["ok"]="50ms,5000ms"
+blinking_pattern["Local Gateway"]="$DOT,$M,$DASH,$M,$DASH,$M,$DASH,$M,$DASH,$BREAK"
+blinking_pattern["Remote Gateway"]="$DOT,$M,$DOT,$M,$DASH,$M,$DASH,$M,$DASH,$BREAK"
+blinking_pattern["Local Modem"]="$DOT,$M,$DOT,$M,$DOT,$M,$DASH,$M,$DASH,$BREAK"
+blinking_pattern["Internet"]="$DOT,$M,$DOT,$M,$DOT,$M,$DOT,$M,$DASH,$BREAK"
 
 declare -A bit_to_pattern
 bit_to_pattern[2]="Local Gateway"
@@ -152,6 +161,7 @@ status_indicator() {
 # Log current state
 log_state() {
     # Print formatted log header
+    state=$1
     echo "════════════════════════════════════════════════════════"
     echo "    $(date '+%Y-%m-%d %H:%M:%S') - State Change Detected"
     echo "────────────────────────────────────────────────────────"
@@ -173,54 +183,61 @@ log_state() {
     echo ""
 }
 
+sleep 2
+
 # status output loop
 while true ; do
     if read -r flag result <"$FIFO"; then
 
-            # Update state based on the flag and result
-            if [[ $result -eq 0 ]]; then
-                # Success (for ping) or closed (for door) - set the flag
-                state=$(($state | $flag))
-            else
-                # Failure or open - clear the flag
-                state=$(($state & ~$flag))
-            fi
-
-            # a change notification has arrived
-            for pid in ${LED_PIDS[@]}; do
-                kill -9 $pid &>/dev/null || true
-                wait $pid 2>/dev/null || true
-            done
-            LED_PIDS=()
-
-
-            if [[ $(($state & 1)) ]] then
-               gpioset $GPIO_BLUE_LED=1 &
-            else
-               gpioset $GPIO_BLUE_LED=${blinking_pattern["door-open"]} &
-            fi
-            LED_PIDS+=($!)
-
-            if [[ $(($state & 1)) ]] then
-                gpioset $GPIO_GREEN_LED=1 &
-            else
-                gpioset $GPIO_GREEN_LED=${blinking_pattern["ups-power"]} &
-            fi
-            LED_PIDS+=($!)
-
-            for i in 2 3 4 5
-            do
-                f=$((1 << $i))
-                pattern=""
-
-                [[ $(($state & $f)) -eq 0 ]] && pattern="${pattern},${blinking_pattern[${bit_to_pattern[$i]}]}"
-            done
-
-            [[ -z "$pattern" ]] && pattern="${blinking_pattern["ok"]}"
-
-            gpioset -t $pattern $GPIO_RED_LED=0 &
-            LED_PIDS+=($!)
-
-            log_state
+        # Update state based on the flag and result
+        if [[ $result -eq 1 ]]; then
+            # Success (for ping) or closed (for door) - set the flag
+            state=$(($state | $flag))
+        else
+            # Failure or open - clear the flag
+            state=$(($state & ~$flag))
         fi
+
+        # a change notification has arrived
+        for pid in ${LED_PIDS[@]}; do
+            kill -9 $pid &>/dev/null || true
+            wait $pid 2>/dev/null || true
+        done
+        LED_PIDS=()
+
+
+        if [[ $(($state & 1)) ]] then
+           gpioset $GPIO_BLUE_LED=1 &
+        else
+           gpioset $GPIO_BLUE_LED=${blinking_pattern["door-open"]} &
+        fi
+        LED_PIDS+=($!)
+
+        if [[ $(($state & 1)) ]] then
+            gpioset $GPIO_GREEN_LED=1 &
+        else
+            gpioset $GPIO_GREEN_LED=${blinking_pattern["ups-power"]} &
+        fi
+        LED_PIDS+=($!)
+
+        pattern=""
+
+        for i in 2 3 4 5
+        do
+            f=$((1 << $i))
+            #echo "$f $state $(($state & $f)) - $pattern"
+            if [[ $(($state & $f)) -eq $f ]] then
+               [[ -n "$pattern" ]] && pattern="${pattern},"
+               pattern="${pattern}${blinking_pattern[${bit_to_pattern[$i]}]}"
+            fi
+        done
+
+
+        [[ -z "$pattern" ]] && pattern="${blinking_pattern["ok"]}"
+
+        gpioset -t $pattern $GPIO_RED_LED=0 &
+        LED_PIDS+=($!)
+
+        log_state $state
+    fi
 done
