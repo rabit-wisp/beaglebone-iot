@@ -132,20 +132,25 @@ LED_PIDS+=($!)
 declare -A blinking_pattern
 
 
-blinking_pattern["door-open"]="1000ms,1000ms"
+#blinking_pattern["door-open"]="5000ms,50ms,50ms,50ms,50ms,50ms"
+#blinking_pattern["ups-power"]="200ms,200ms"
+
+# this is a poor-man's PWM implementation of a soft pulse
+blinking_pattern["door-open"]="30ms,1ms,29ms,2ms,28ms,3ms,27ms,4ms,26ms,5ms,25ms,6ms,24ms,7ms,23ms,8ms,22ms,9ms,21ms,10ms,20ms,11ms,19ms,12ms,18ms,13ms,17ms,14ms,16ms,15ms,15ms,16ms,14ms,17ms,13ms,18ms,12ms,19ms,11ms,20ms,10ms,21ms,9ms,22ms,8ms,23ms,7ms,24ms,6ms,25ms,5ms,26ms,4ms,27ms,3ms,28ms,2ms,29ms,1ms,30ms,1ms,30ms,2ms,29ms,3ms,28ms,4ms,27ms,5ms,26ms,6ms,25ms,7ms,24ms,8ms,23ms,9ms,22ms,10ms,21ms,11ms,20ms,12ms,19ms,13ms,18ms,14ms,17ms,15ms,16ms,16ms,15ms,17ms,14ms,18ms,13ms,19ms,12ms,20ms,11ms,21ms,10ms,22ms,9ms,23ms,8ms,24ms,7ms,25ms,6ms,26ms,5ms,27ms,4ms,28ms,3ms,29ms,2ms"
 blinking_pattern["ups-power"]="200ms,200ms"
 
 # patterns are taken from morse code for numeric values 1, 2, 3, 4, ...
-DOT=60ms
+DOT=70ms
 DASH=350ms
 M=100ms
 BREAK=3000ms
 
 blinking_pattern["ok"]="50ms,5000ms"
-blinking_pattern["Local Gateway"]="$DOT,$M,$DASH,$M,$DASH,$M,$DASH,$M,$DASH,$BREAK"
-blinking_pattern["Remote Gateway"]="$DOT,$M,$DOT,$M,$DASH,$M,$DASH,$M,$DASH,$BREAK"
-blinking_pattern["Local Modem"]="$DOT,$M,$DOT,$M,$DOT,$M,$DASH,$M,$DASH,$BREAK"
-blinking_pattern["Internet"]="$DOT,$M,$DOT,$M,$DOT,$M,$DOT,$M,$DASH,$BREAK"
+
+blinking_pattern["Local Gateway"]="$DOT,$M,$DASH,$BREAK"
+blinking_pattern["Remote Gateway"]="$DASH,$M,$DOT,$M,$DOT,$M,$DOT,$BREAK"
+blinking_pattern["Local Modem"]="$DASH,$M,$DOT,$M,$DASH,$M,$DOT,$BREAK"
+blinking_pattern["Internet"]="$DASH,$M,$DOT,$M,$DOT,$M,$DOT,$BREAK"
 
 declare -A bit_to_pattern
 bit_to_pattern[2]="Local Gateway"
