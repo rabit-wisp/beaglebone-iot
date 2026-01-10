@@ -211,17 +211,19 @@ while true ; do
         LED_PIDS=()
 
 
-        if [[ $(($state & 1)) ]] then
+        if [[ $(($state & 1)) == 1 ]] then
+           echo "setting Blue LED to off"
            gpioset $GPIO_BLUE_LED=1 &
         else
-           gpioset $GPIO_BLUE_LED=${blinking_pattern["door-open"]} &
+            echo setting blue LED to ${blinking_pattern["door-open"]}
+            gpioset -t ${blinking_pattern["door-open"]} $GPIO_BLUE_LED=0 &
         fi
         LED_PIDS+=($!)
 
-        if [[ $(($state & 1)) ]] then
+        if [[ $(($state & 2)) ]] then
             gpioset $GPIO_GREEN_LED=1 &
         else
-            gpioset $GPIO_GREEN_LED=${blinking_pattern["ups-power"]} &
+            gpioset -t ${blinking_pattern["ups-power"]} $GPIO_GREEN_LED=0 &
         fi
         LED_PIDS+=($!)
 
@@ -230,8 +232,7 @@ while true ; do
         for i in 2 3 4 5
         do
             f=$((1 << $i))
-            #echo "$f $state $(($state & $f)) - $pattern"
-            if [[ $(($state & $f)) -eq $f ]] then
+            if [[ $(($state & $f)) == 0 ]] then
                [[ -n "$pattern" ]] && pattern="${pattern},"
                pattern="${pattern}${blinking_pattern[${bit_to_pattern[$i]}]}"
             fi
